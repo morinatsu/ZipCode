@@ -1,0 +1,6 @@
+*.pyc
+*.csv
+*.lzh
+MANIFEST
+db/zip_db
+dist/*
