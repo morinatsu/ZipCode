@@ -5,100 +5,106 @@ zipcode : returns Japanese zipcode or address
 
 """
 import re
-import json
-import logging
-import webapp2
-from zip_models import AreaCode, NetCode
-from gaejson import GaeJson
+from flask import Flask, request, json, g, Response, abort
+import sqlite3
+
+app = Flask(__name__)
+app.config.from_object('config')
 
 
-class FromZip(webapp2.RequestHandler):
+def connect_db():
+    con = sqlite3.connect(app.config['DATABASE'])
+    con.row_factory = sqlite3.Row
+    return con
+
+
+@app.before_request
+def before_request():
+    g.db = connect_db()
+
+
+@app.after_request
+def after_request(response):
+    g.db.close()
+    return response
+
+
+@app.route('/zip2adr')
+def zip2adr():
     """ return zipcode data from zipcode. """
 
-    def get(self):
-        def validate_zipcode(code):
-            validated_code = re.match(r'^\d{3}-?\d{4}$', code)
-            return validated_code.group(0)
+    def validate_zipcode(code):
+        validated_code = re.match(r'^(\d{3})-?(\d{4})$', code)
+        if validated_code is None:
+            app.logger.error('invalid zipcode: %s', code)
+            abort(400)
+        app.logger.info('valid zipcode: %s', code)
+        return validated_code.group(1) + validated_code.group(2)
 
-        def is_net(code):
-            if code[3:] == '0000':
-                return True
-            else:
-                return False
+    def is_net(code):
+        if code[5:] == '00':
+            return True
+        else:
+            return False
 
-        self.response.headers['content-type'] = \
-            'application/json;charset=UTF-8'
-        zipcode = validate_zipcode(self.request.get("code"))
-        if zipcode:
-            if is_net(zipcode):
-                netcode = NetCode()
-                query = netcode.gql("WHERE zipcode = :zipcode",
-                                    zipcode=zipcode)
-            else:
-                areacode = AreaCode()
-                query = areacode.gql("WHERE zipcode = :zipcode",
-                                     zipcode=zipcode)
-            json.dump(query, self.response.out,
-                      ensure_ascii=False, cls=GaeJson)
+    zipcode = validate_zipcode(request.args.get('code', ''))
+    if zipcode:
+        if is_net(zipcode):
+            cur = g.db.execute('select * from netcode where zipcode=?',
+                               (zipcode, ))
+        else:
+            cur = g.db.execute('select * from areacode where zipcode=?',
+                               (zipcode, ))
+        entries = [dict(row) for row in cur.fetchall()]
+    else:
+        entries = []
+    return Response(json.dumps(entries, ensure_ascii=False),
+                    mimetype='application/json; charset=utf-8')
 
 
-class FromAdr(webapp2.RequestHandler):
+@app.route('/adr2zip')
+def adr2zip():
     """ return zipcode data from address. """
 
-    def get(self):
-        def like_filter(query, street):
-            for entity in query:
-                logging.DEBUG('%s == %s' % (entity.street, street)
-                if entity.street == street[:len(entity.street)]:
-                    yield entity
+    def like_filter(entries, street):
+        for entry in entries:
+            compare_length = min(len(street), len(entry['street_kanji']))
+            app.logger.info('compare: %s == %s',
+                            street[:compare_length],
+                            entry['street_kanji'][:compare_length])
+            if (street[:compare_length] ==
+                    entry['street_kanji'][:compare_length]):
+                yield entry
 
-        self.response.headers['content-type'] = \
-            'application/json;charset=UTF-8'
-        prefecture = self.request.get("pref")
-        municipality = self.request.get("muni")
-        street = self.request.get("street")
-        areacode = AreaCode()
-        query = areacode.gql(
-            """WHERE prefecture__kanji = :prefecture
-                 AND municipality_kanji = :municipality""",
-            prefecture=prefecture, municipality=municipality)
-        if query:
-            json.dump(like_filter(query, street), self.response.out,
-                      ensure_ascii=False, cls=GaeJson)
-            return
-        netcode = NetCode()
-        query = netcode.gql(
-            """WHERE prefecture__kanji = :prefecture
-                 AND municipality_kanji = :municipality""",
-            prefecture=prefecture, municipality=municipality)
-        if query:
-            json.dump(like_filter(query, street), self.response.out,
-                      ensure_ascii=False, cls=GaeJson)
+    prefecture = request.args.get('pref', '')
+    municipality = request.args.get('muni', '')
+    street = request.args.get('street', '')
+    if prefecture == '' or municipality == '' or street == '':
+        abort(400)
+    cur = g.db.execute(
+        '''select *
+             from areacode
+            where prefecture_kanji = ?
+              and municipality_kanji = ?''',
+        (prefecture, municipality))
+    entries = [dict(row) for row in cur.fetchall()]
+    matched_entries = list(like_filter(entries, street))
+    if len(matched_entries) > 0:
+        return Response(json.dumps(
+            matched_entries,
+            ensure_ascii=False),
+            mimetype='application/json; charset=utf-8')
+    cur = g.db.execute(
+        '''select *
+             from netcode
+            where prefecture_kanji = ?
+              and municipality_kanji = ?''',
+        (prefecture, municipality))
+    entries = [dict(row) for row in cur.fetchall()]
+    return Response(json.dumps(
+        entries,
+        ensure_ascii=False),
+        mimetype='application/json; charset=utf-8')
 
-
-class MkDummy(webapp2.RequestHandler):
-    """ return zipcode data from address. """
-
-    def get(self):
-        area = AreaCode()
-        area.local_government_code = u"01101"
-        area.old_zipcode = u"060  "
-        area.zipcode = u"9999999"
-        area.prefecture_kana = u"ホッカイドウ"
-        area.municipality_kana = u"サッポロシチュウオウク"
-        area.street_kana = u"イカニケイサイガナイバアイ"
-        area.prefecture_kanji = u"北海道"
-        area.municipality_kanji = u"札幌市中央区"
-        area.street_kanji = u"以下に掲載がない場合"
-        area.street_has_plural_code = u"0"
-        area.street_has_code_by_section = u"0"
-        area.has_chome = u"0"
-        area.zipcode_shared_by_plural_street = u"0"
-        area.is_modified = u"0"
-        area.reason_of_modify = u"0"
-        area.put()
-
-
-app = webapp2.WSGIApplication(
-    [("/fromzip.*", FromZip), ("/fromadr.*", FromAdr), ("/test.*", MkDummy)],
-    debug=True)
+if __name__ == '__main__':
+    app.run()
