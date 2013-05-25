@@ -3,4 +3,5 @@
 *.lzh
 MANIFEST
 db/zip_db
+zipcode/zip_db
 dist/*

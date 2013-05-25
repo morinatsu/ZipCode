@@ -54,3 +54,6 @@ create index NetCode_2 on NetCode (
     municipality_kanji,
     street_kanji
 );
+.separator ","
+.import ../db/area.csv AreaCode
+.import ../db/net.csv NetCode

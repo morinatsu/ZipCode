@@ -48,7 +48,6 @@ def merge_separated_line():
             else:
                 new_buff.append(buff[idx])
             idx += 1
-        print u', '.join(new_buff)
         return new_buff
 
     line_buffer = []
