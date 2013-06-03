@@ -9,7 +9,7 @@ import argparse
 import csv
 
 
-def merge_separated_line():
+def merge_separated_line(args):
     """
     yields line
 
@@ -51,7 +51,7 @@ def merge_separated_line():
         return new_buff
 
     line_buffer = []
-    ken_all = csv.reader(open(Args.source))
+    ken_all = csv.reader(open(args.source))
     for line in ken_all:
         unicode_line = [unicode(s, 'utf8') for s in line]
         if not(line_buffer):
@@ -64,22 +64,30 @@ def merge_separated_line():
             line_buffer = unicode_line
     yield line_buffer
 
-# parse aruguments
-Parser = argparse.ArgumentParser(description='Make loaddata of postalcode.')
-Parser.add_argument('source', help='input file of converting')
-Parser.add_argument('area', help='data file for area-code')
-Parser.add_argument('net', help='data file of net-code')
-Args = Parser.parse_args()
-# converting
-Areadata = csv.writer(open(Args.area, 'w'),
-                      delimiter=',',
-                      quoting=csv.QUOTE_NONE)
-Netdata = csv.writer(open(Args.net, 'w'),
-                     delimiter=',',
-                     quoting=csv.QUOTE_NONE)
-for line in merge_separated_line():
-    zipcode = line[2]
-    if zipcode[5:7] != '00':
-        Areadata.writerow([s.encode('utf8') for s in line])
-    else:
-        Netdata.writerow([s.encode('utf8') for s in line])
+def parse_args():
+    # parse aruguments
+    Parser = argparse.ArgumentParser(description='Make loaddata of postalcode.')
+    Parser.add_argument('source', help='input file of converting')
+    Parser.add_argument('area', help='data file for area-code')
+    Parser.add_argument('net', help='data file of net-code')
+    return Parser.parse_args()
+
+def main(args):
+    # converting main
+    Areadata = csv.writer(open(args.area, 'w'),
+                          delimiter=',',
+                          quoting=csv.QUOTE_NONE)
+    Netdata = csv.writer(open(args.net, 'w'),
+                         delimiter=',',
+                         quoting=csv.QUOTE_NONE)
+    for line in merge_separated_line(args):
+        zipcode = line[2]
+        if zipcode[5:7] != '00':
+            Areadata.writerow([s.encode('utf8') for s in line])
+        else:
+            Netdata.writerow([s.encode('utf8') for s in line])
+
+if __name__ == '__main__':
+    args = parse_args()
+    main(args)
+
