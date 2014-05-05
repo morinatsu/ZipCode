@@ -4,7 +4,7 @@
 import os.path
 
 # configuration
-DIRNAME = os.path.dirname(__file__)
-DATABASE = os.path.join(DIRNAME,'zip_db')
+(DIRNAME, dummy) = os.path.split(os.path.dirname(__file__))
+DATABASE = os.path.join(DIRNAME,'db','zip_db')
 TESTING = True
 DEBUG = True

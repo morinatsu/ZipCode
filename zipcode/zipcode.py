@@ -14,6 +14,7 @@ app.config.from_object('config')
 
 def connect_db():
     con = sqlite3.connect(app.config['DATABASE'])
+    app.logger.info('dirname: %s', app.config['DIRNAME'])
     app.logger.info('database: %s', app.config['DATABASE'])
     con.row_factory = sqlite3.Row
     return con
