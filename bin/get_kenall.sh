@@ -1,15 +1,18 @@
-#!/bin/bash
+#!/bin/bash -xv
 
-echo '***** get_kenall.sh *****'
-echo "[" `date "+%Y/%m/%d %H/%M"` "]"
+# Download zipcode file and reload
+
+set -e
+
+logdir=/var/log
+logfile=${logdir}/$(basename $0).log
+exec 2> ${logfile}
+
+logger --stderr --priority user.info '***** get_kenall.sh *****'
 
 homedir=/home/morinatsu/
 dbdir=${homedir}/db/
 bindir=${homedir}/bin/
-
-echo "homedir: ${homedir}"
-echo "dbdir: ${dbdir}"
-echo "bindir: ${bindir}"
 
 rm -f ${dbdir}/ken_all.lzh
 rm -f ${dbdir}/ken_all.csv
