@@ -3,7 +3,7 @@
 echo '***** get_kenall.sh *****'
 echo "[" `date "+%Y/%m/%d %H/%M"` "]"
 
-homedir=/home/morinatsu/bin/ZipCode/
+homedir=/home/morinatsu/
 dbdir=${homedir}/db/
 bindir=${homedir}/bin/
 
