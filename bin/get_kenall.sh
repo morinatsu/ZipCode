@@ -23,7 +23,7 @@ rm -f ${dbdir}/net.csv
 wget --quiet \
      --output-document=${dbdir}/ken_all.zip \
      http://www.post.japanpost.jp/zipcode/dl/kogaki/zip/ken_all.zip
-unzip ${dbdir}/ken_all.zip -d ${dbdir}/ken_all.csv
+unzip -L ${dbdir}/ken_all.zip -d ${dbdir}
 nkf -SwdO ${dbdir}/ken_all.csv ${dbdir}/ken_all_utf8.csv
 python ${bindir}/make_loaddata.py \
        ${dbdir}/ken_all_utf8.csv \
